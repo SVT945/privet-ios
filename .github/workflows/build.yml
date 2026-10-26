@@ -1,0 +1,43 @@
+name: Сборка iOS (.ipa без подписи)
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установка XcodeGen
+        run: brew install xcodegen
+
+      - name: Создание проекта Xcode
+        run: xcodegen generate
+
+      - name: Сборка (без подписи)
+        run: |
+          xcodebuild \
+            -project PRIVET.xcodeproj \
+            -scheme PRIVET \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Упаковка IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/PRIVET.app Payload/
+          zip -qry PRIVET.ipa Payload
+          ls -la PRIVET.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PRIVET-ios-unsigned
+          path: PRIVET.ipa
+          if-no-files-found: error
